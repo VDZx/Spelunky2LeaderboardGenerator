@@ -1,0 +1,9 @@
+*.suo
+sqlite3
+*.user
+/Spelunky2LeaderboardGenerator/bin/Debug
+/Spelunky2LeaderboardGenerator/bin/Release
+/Spelunky2LeaderboardGenerator/obj/Debug
+/Spelunky2LeaderboardGenerator/obj/Release
+/packages/System.Buffers.4.5.0
+/packages/Zstandard.Net.1.1.7
