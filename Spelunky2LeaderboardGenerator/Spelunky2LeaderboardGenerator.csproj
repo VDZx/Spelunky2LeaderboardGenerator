@@ -51,6 +51,10 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Enums.cs" />
+    <Compile Include="Jsons.cs" />
+    <Compile Include="LeaderboardData.cs" />
+    <Compile Include="PageWriter.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
