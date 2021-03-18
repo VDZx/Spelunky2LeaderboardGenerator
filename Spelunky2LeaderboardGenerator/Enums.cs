@@ -56,7 +56,8 @@ namespace Spelunky2LeaderboardGenerator
         Depth,
         Score,
         Time,
-        Stats
+        Stats,
+        Player
     }
 
     public enum Platform
@@ -69,7 +70,7 @@ namespace Spelunky2LeaderboardGenerator
     public enum RunEndCause
     {
         Unknown = 0,
-        COClear = 0x008A,
+        SpecialClear = 0x008A,
         HardClear = 0x01E9,
         NormalClear = 0x02ED
     }

@@ -6,7 +6,6 @@ using System.Threading.Tasks;
 using System.Net;
 using System.IO;
 using Zstandard.Net; //Non-standard library, get it via NuGet
-using System.Web.Script.Serialization; //Add reference to System.Web.Extensions for this
 
 namespace Spelunky2LeaderboardGenerator
 {
@@ -134,22 +133,12 @@ namespace Spelunky2LeaderboardGenerator
 
         public void InitializeWithJson(string json)
         {
-            JavaScriptSerializer jss = new JavaScriptSerializer();
-            jss.MaxJsonLength = 100 * 1024 * 1024;
-            Program.Log("Deserializing...");
-            allEntries = jss.Deserialize<PlayerEntry[]>(json);
-            if (allEntries == null) throw new Exception("Could not deserialize JSON!");
-            Program.Log("Deserialization successful.");
+            allEntries = Program.Deserialize<PlayerEntry[]>(json, "Leaderboard Data");
         }
 
         public void ExportJson(string filename)
         {
-            Program.Log("Writing JSON to " + filename + "...");
-            JavaScriptSerializer jss = new JavaScriptSerializer();
-            jss.MaxJsonLength = 100 * 1024 * 1024;
-            string json = jss.Serialize(allEntries);
-            Program.WriteFile(filename, json);
-            Program.Log("Finished writing JSON.");
+            Program.SerializeToFile(filename, allEntries, "Leaderboard Data");
         }
 
         public void FilterPirates()
@@ -192,6 +181,26 @@ namespace Spelunky2LeaderboardGenerator
             }
             allEntries = newEntries.ToArray();
             Program.Log("Finished filtering obvious pirates.");
+        }
+
+        public void FilterBlacklisted()
+        {
+            Program.Log("Filtering blacklisted players...");
+            List<PlayerEntry> newEntries = new List<PlayerEntry>(allEntries);
+            for (int i = 0; i < newEntries.Count; i++)
+            {
+                for (int j = 0; j < Program.blacklist.Count; j++)
+                {
+                    if (newEntries[i].id == Program.blacklist[j])
+                    {
+                        newEntries.RemoveAt(i);
+                        i--;
+                        break;
+                    }
+                }
+            }
+            allEntries = newEntries.ToArray();
+            Program.Log("Finished filtering blacklisted players.");
         }
 
         public void SortByDepth(string desc)

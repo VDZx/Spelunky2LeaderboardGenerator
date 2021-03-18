@@ -17,6 +17,11 @@ namespace Spelunky2LeaderboardGenerator
         bool ongoing = false;
         StringBuilder stringBuilder = new StringBuilder();
 
+        public PageWriter()
+        {
+            //Empty constructor
+        }
+
         public PageWriter(PlayerEntry[] entries, int year, int month, int day, bool ongoing)
         {
             this.entries = entries;
@@ -72,7 +77,7 @@ namespace Spelunky2LeaderboardGenerator
                     {
                         switch (entries[i].runend)
                         {
-                            case RunEndCause.COClear: coEntries.Add(entries[i]); break;
+                            case RunEndCause.SpecialClear: coEntries.Add(entries[i]); break;
                             case RunEndCause.HardClear: hardEntries.Add(entries[i]); break;
                             case RunEndCause.NormalClear: normalEntries.Add(entries[i]); break;
                         }
@@ -131,7 +136,7 @@ namespace Spelunky2LeaderboardGenerator
                 //Level
                 for (int iLevel = entry.level; iLevel > 0; iLevel--)
                 {
-                    bool cleared = (entry.runend == RunEndCause.NormalClear || entry.runend == RunEndCause.HardClear || entry.runend == RunEndCause.COClear);
+                    bool cleared = (entry.runend == RunEndCause.NormalClear || entry.runend == RunEndCause.HardClear || entry.runend == RunEndCause.SpecialClear);
                     if (!deathsPerLevel.ContainsKey(iLevel)) deathsPerLevel.Add(iLevel, 0);
                     if (!survivorsPerLevel.ContainsKey(iLevel)) survivorsPerLevel.Add(iLevel, 0);
                     if (iLevel == entry.level && !cleared)
@@ -298,7 +303,7 @@ namespace Spelunky2LeaderboardGenerator
                     {
                         case RunEndCause.NormalClear:
                         case RunEndCause.HardClear:
-                        case RunEndCause.COClear:
+                        case RunEndCause.SpecialClear:
                             break;
                         default:
                             continue;
@@ -340,20 +345,90 @@ namespace Spelunky2LeaderboardGenerator
             return stringBuilder.ToString();
         }
 
-        public void WriteHeader(PageType pageType)
+        public string GeneratePlayerPage(PlayerInfo pi)
+        {
+            //Quick and dirty placeholder code for testing
+            Program.Log("Generating player page for " + pi.name + " (" + pi.id + ")");
+            stringBuilder = new StringBuilder();
+
+            WriteHeader(PageType.Player);
+
+            stringBuilder.Append(pi.name);
+            BR();
+            for (int i = 0; i < pi.previousNames.Count; i++)
+            {
+                stringBuilder.Append("aka ");
+                stringBuilder.Append(pi.previousNames[i]);
+                BR();
+            }
+
+            stringBuilder.Append("bestdepth: " + pi.bestLevel);
+            BR();
+            stringBuilder.Append("bestscore: " + pi.bestScore);
+            BR();
+            stringBuilder.Append("bestnormal: " + pi.bestNormalTime);
+            BR();
+            stringBuilder.Append("besthard: " + pi.bestHardTime);
+            BR();
+            stringBuilder.Append("bestspecial: " + pi.bestSpecialTime);
+            BR();
+
+            stringBuilder.Append("bestdepthrank: " + pi.bestLevelRank);
+            BR();
+            stringBuilder.Append("bestscorerank: " + pi.bestScoreRank);
+            BR();
+            stringBuilder.Append("bestnormalrank: " + pi.bestNormalTimeRank);
+            BR();
+            stringBuilder.Append("besthardrank: " + pi.bestHardTimeRank);
+            BR();
+            stringBuilder.Append("bestspecialrank: " + pi.bestSpecialTimeRank);
+            BR();
+
+            stringBuilder.Append("top10depth: " + pi.topLevelsAverage);
+            BR();
+            stringBuilder.Append("top10score: " + pi.topScoresAverage);
+            BR();
+            stringBuilder.Append("top5time: " + pi.topTimesAverage);
+            BR();
+
+            pi.entries.Sort((x, y) => (y.timestamp.CompareTo(x.timestamp)));
+            for (int i = 0; i < pi.entries.Count; i++)
+            {
+                ExtendedPlayerEntry epe = pi.entries[i];
+                stringBuilder.Append(epe.timestamp + " - " + epe.level + " - " + epe.score + " - " + epe.GetTime());
+                BR();
+            }
+
+            //Finish
+            WriteFooter(PageType.Player, true);
+
+            //Write to file
+            return stringBuilder.ToString();
+        }
+
+        public void BR()
+        {
+            stringBuilder.Append("<br />");
+        }
+
+        public void WriteHeader(PageType pageType, string customTitle = null)
         {
             stringBuilder.AppendLine("<html>");
             //--HEAD--
             stringBuilder.AppendLine("<head>");
             stringBuilder.AppendLine("<meta charset=\"utf-8\" />");
             stringBuilder.Append("<title>");
-            stringBuilder.Append(pageType);
-            stringBuilder.Append(" ");
-            stringBuilder.Append(dateTime.Year);
-            stringBuilder.Append("-");
-            stringBuilder.Append(dateTime.Month);
-            stringBuilder.Append("-");
-            stringBuilder.Append(dateTime.Day);
+            if (customTitle != null) stringBuilder.Append(customTitle);
+            else
+            {
+                stringBuilder.Append(pageType);
+                stringBuilder.Append(" ");
+                stringBuilder.Append(dateTime.Year);
+                stringBuilder.Append("-");
+                stringBuilder.Append(dateTime.Month);
+                stringBuilder.Append("-");
+                stringBuilder.Append(dateTime.Day);
+            }
             stringBuilder.Append(" - Spelunky 2 leaderboards (unofficial)");
             stringBuilder.AppendLine("</title>");
             stringBuilder.AppendLine("<style>");
@@ -512,7 +587,7 @@ namespace Spelunky2LeaderboardGenerator
                     {
                         case RunEndCause.NormalClear:
                         case RunEndCause.HardClear:
-                        case RunEndCause.COClear:
+                        case RunEndCause.SpecialClear:
                             stringBuilder.Append(" class=\"clear\">");
                             break;
                         default:
