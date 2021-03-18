@@ -19,8 +19,8 @@ namespace Spelunky2LeaderboardGenerator
         const int START_META = 0x2719C48;
         const int START_RUNDATA = 0x029020C8;
         const int START_SCORES = 0x30A32C8;
-        const int START_BLOCK7 = 0x38444C0;
-        const int START_BLOCK8 = 0x3C14DC0;
+        const int START_BLOCK7 = 0x38444C8;
+        const int START_BLOCK8 = 0x3C14DC8;
         const int LENGTH_NAME = 0x21;
 
         public PlayerEntry[] allEntries = null;

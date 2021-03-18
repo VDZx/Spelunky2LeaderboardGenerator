@@ -170,8 +170,8 @@ namespace Spelunky2LeaderboardGenerator
                     if (survivors + deaths > 0) deathRate = (float)deaths / (float)(survivors + deaths);
 
                     stringBuilder.Append("<tr");
-                    if (deathRate > 0.5f) stringBuilder.Append(" class=\"deadly\"");
-                    else if (deathRate > 0.3f) stringBuilder.Append(" class=\"danger\"");
+                    if (deathRate >= 0.5f) stringBuilder.Append(" class=\"deadly\"");
+                    else if (deathRate >= 0.3f) stringBuilder.Append(" class=\"danger\"");
                     stringBuilder.Append("><td class=\"w");
                     string levelName = PlayerEntry.GetLevel(i);
                     stringBuilder.Append(levelName.Substring(0, 1));
@@ -483,24 +483,15 @@ namespace Spelunky2LeaderboardGenerator
             if (true)
             {
                 //DEBUG
-                /*sb.Append("<td>");
-                sb.Append(Convert.ToString((int)entry.runend, 16));
-                sb.Append("</td><td>");
-                sb.Append(entry.id);
-                sb.Append("</td><td>");
-                sb.Append(Convert.ToString((long)entry.id, 16));
-                sb.Append("</td><td>");
-                sb.Append(entry.unknown1);
-                sb.Append("</td><td>");
-                sb.Append(Convert.ToString(entry.unknown1, 16));
-                sb.Append("</td><td>");
-                sb.Append(entry.unknown2);
-                sb.Append("</td><td>");
-                sb.Append(Convert.ToString(entry.unknown2, 16));
-                sb.Append("</td><td>");
-                sb.Append("</td>");*/
                 stringBuilder.Append("<td>");
-                stringBuilder.Append(Convert.ToString((long)entry.id, 16).PadLeft(16, '0'));
+                stringBuilder.Append(entry.unknown1);
+                stringBuilder.Append("</td><td>");
+                stringBuilder.Append(Convert.ToString(entry.unknown1, 16));
+                stringBuilder.Append("</td><td>");
+                stringBuilder.Append(entry.unknown2);
+                stringBuilder.Append("</td><td>");
+                stringBuilder.Append(Convert.ToString(entry.unknown2, 16));
+                stringBuilder.Append("</td><td>");
                 stringBuilder.Append("</td>");
             }
 #endif
