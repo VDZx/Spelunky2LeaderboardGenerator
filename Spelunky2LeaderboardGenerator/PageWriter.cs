@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.IO;
 
 namespace Spelunky2LeaderboardGenerator
 {
@@ -29,7 +30,7 @@ namespace Spelunky2LeaderboardGenerator
             this.ongoing = ongoing;
         }
 
-        public string GeneratePage(string description, PageType pageType, string pageFile)
+        public string GeneratePage(string description, PageType pageType, string pageFile, string path)
         {
             Program.Log("Generating " + description);
             stringBuilder = new StringBuilder();
@@ -57,7 +58,7 @@ namespace Spelunky2LeaderboardGenerator
                 stringBuilder.Append("<div id=\"count\" >Loading...</div><br /><br />");
             }
             WriteTypeNavigation(pageType);
-            stringBuilder.AppendLine("<br /><br />");
+            stringBuilder.AppendLine("<br /><br /><div class=\"hidelink\">");
             switch (pageType)
             {
                 case PageType.Depth:
@@ -65,7 +66,7 @@ namespace Spelunky2LeaderboardGenerator
                     stringBuilder.AppendLine("<table border=\"1\">");
                     for (int i = 0; i < entries.Length; i++)
                     {
-                        WriteEntry(entries[i], i + 1, pageType);
+                        WriteEntry(entries[i], i + 1, pageType, path);
                     }
                     stringBuilder.AppendLine("</table>");
                     break;
@@ -82,16 +83,17 @@ namespace Spelunky2LeaderboardGenerator
                             case RunEndCause.NormalClear: normalEntries.Add(entries[i]); break;
                         }
                     }
-                    WriteTimeRanking(stringBuilder, coEntries, "Special", pageType);
+                    WriteTimeRanking(stringBuilder, coEntries, "Special", pageType, path);
                     stringBuilder.AppendLine("<br /><br />");
-                    WriteTimeRanking(stringBuilder, hardEntries, "Hard", pageType);
+                    WriteTimeRanking(stringBuilder, hardEntries, "Hard", pageType, path);
                     stringBuilder.AppendLine("<br /><br />");
-                    WriteTimeRanking(stringBuilder, normalEntries, "Normal", pageType);
+                    WriteTimeRanking(stringBuilder, normalEntries, "Normal", pageType, path);
                     stringBuilder.AppendLine("<br /><br />");
 
                     break;
             }
 
+            stringBuilder.AppendLine("</div>"); //end hidelink
             WriteFooter(pageType, true);
 
             //Write to file
@@ -347,14 +349,97 @@ namespace Spelunky2LeaderboardGenerator
 
         public string GeneratePlayerPage(PlayerInfo pi)
         {
-            //Quick and dirty placeholder code for testing
-            Program.Log("Generating player page for " + pi.name + " (" + pi.id + ")");
+            //Program.Log("Generating player page for " + pi.name + " (" + pi.id + ")"); //Enable this for a lot of spam
             stringBuilder = new StringBuilder();
 
-            WriteHeader(PageType.Player);
+            //Sort entries chronologically (oldest scores first)
+            pi.entries.Sort((x, y) => (x.timestamp.CompareTo(y.timestamp)));
 
+            //Get info
+            ExtendedPlayerEntry latestEntry = pi.entries[pi.entries.Count - 1];
+            long totalFrames = 0;
+            int normalClears = 0;
+            int hardClears = 0;
+            int specialClears = 0;
+            int scVisits = 0;
+            int coVisits = 0;
+            bool doubleSpecial = false;
+            List<Character> playedChars = new List<Character>();
+            for (int i = 0; i < pi.entries.Count; i++)
+            {
+                ExtendedPlayerEntry e = pi.entries[i];
+                totalFrames += e.runframes;
+                switch(e.runend)
+                {
+                    case RunEndCause.NormalClear: normalClears++; break;
+                    case RunEndCause.HardClear: hardClears++; break;
+                    case RunEndCause.SpecialClear: specialClears++; break;
+                }
+                if (e.level >= 19) scVisits++;
+                if (e.level >= 23) coVisits++;
+
+                //Accomplishment tracking
+                if (i > 0 && e.runend == RunEndCause.SpecialClear)
+                {
+                    if (pi.entries[i - 1].runend == RunEndCause.SpecialClear) doubleSpecial = true;
+                }
+
+                bool hasPlayedCharacter = false;
+                for (int j = 0; j < playedChars.Count; j++) if (playedChars[j] == pi.entries[i].character) hasPlayedCharacter = true;
+                if (!hasPlayedCharacter) playedChars.Add(pi.entries[i].character);
+            }
+
+            //Check for accomplishments
+            List<Accomplishment> accomplishments = new List<Accomplishment>();
+            if (specialClears >= 10) accomplishments.Add(new Accomplishment("Legend", "This player has reached 7-99 ten times!", "legend.png"));
+            if (pi.bestLevelRank == 1) accomplishments.Add(new Accomplishment("#1 Depth", "This player has achieved rank #1 in Depth on a daily!", "1depth.png"));
+            if (pi.bestScoreRank == 1) accomplishments.Add(new Accomplishment("#1 Score", "This player has achieved rank #1 in Score on a daily!", "1score.png"));
+            if (pi.bestHardTimeRank == 1) accomplishments.Add(new Accomplishment("#1 Hard", "This player got first place in a Hard speedrun on a daily!", "1hard.png"));
+            if (pi.bestNormalTimeRank == 1) accomplishments.Add(new Accomplishment("#1 Normal", "This player got first place in a Normal speedrun on a daily!", "1normal.png"));
+            if (pi.bestSpecialTimeRank == 1) accomplishments.Add(new Accomplishment("#1 Special", "This player was the fastest to get a Special clear on a daily!", "1special.png"));
+            if (doubleSpecial) accomplishments.Add(new Accomplishment("Consistent", "This player has reached 7-99 twice in a row!", "consistent.png"));
+            if (pi.bestSpecialTime != -1 && pi.bestSpecialTime < 116 * 60 * 60) accomplishments.Add(new Accomplishment("Celeritas", "This player reached 7-99 within 1 hour and 56 minutes!", "celeritas.png"));
+            if (specialClears > 0) accomplishments.Add(new Accomplishment("One with the Cosmos", "This player has reached 7-99!", "799.png"));
+            if (pi.bestScore > 2000000) accomplishments.Add(new Accomplishment("Treasure Hunter", "This player has achieved a top score of over $2,000,000!", "2million.png"));
+            if (pi.bestHardTime != -1 && pi.bestHardTime < 20 * 60 * 60) accomplishments.Add(new Accomplishment("brb killing primordial chaos", "This player has completed a Hard run in under 20 minutes!", "fasthard.png"));
+            if ((pi.bestNormalTime != -1 && pi.bestNormalTime < 8 * 60 * 60) || (pi.bestHardTime != -1 && pi.bestHardTime < 8 * 60 * 60))
+                accomplishments.Add(new Accomplishment("Really Fast", "This player has completed a run in under 8 minutes!", "fastnormal.png"));
+            if (pi.topScoresAverage > 1000000) accomplishments.Add(new Accomplishment("More like 'Palace of Treasure' am I right", "This player has a top 10 average score of over $1,000,000!", "million.png"));
+            if (coVisits >= 10) accomplishments.Add(new Accomplishment("Astronaut", "This player has reached the Cosmic Ocean ten times!", "astronaut.png"));
+            if (pi.entries.Count >= 365) accomplishments.Add(new Accomplishment("Yearly Challenge", "This player has participated 365 times!", "year.png"));
+            if (playedChars.Count == 20) accomplishments.Add(new Accomplishment("I Main Random", "This player has played with every character!", "allchars.png"));
+
+            //Write header
+            WriteHeader(PageType.Player, pi.name);
+
+            //Return link
+            stringBuilder.AppendLine("<center><a href=\"depth.html\">[Click here to return to leaderboard listings]</a><br /><br />");
+
+            //Name(s)
+            stringBuilder.Append("<font size=\"7\">");
             stringBuilder.Append(pi.name);
+            stringBuilder.Append("</font>");
             BR();
+            //Filter duplicate alternate names
+            for (int i = 0; i < pi.previousNames.Count; i++)
+            {
+                if (pi.previousNames[i] == pi.name)
+                {
+                    pi.previousNames.RemoveAt(i);
+                    i--;
+                    continue;
+                }
+                for (int j = 0; j < pi.previousNames.Count; j++)
+                {
+                    if (i == j) continue;
+                    if (pi.previousNames[i] == pi.previousNames[j])
+                    {
+                        pi.previousNames.RemoveAt(j);
+                        j--;
+                    }
+                }
+            }
+            //List alternate names
             for (int i = 0; i < pi.previousNames.Count; i++)
             {
                 stringBuilder.Append("aka ");
@@ -362,45 +447,144 @@ namespace Spelunky2LeaderboardGenerator
                 BR();
             }
 
-            stringBuilder.Append("bestdepth: " + pi.bestLevel);
-            BR();
-            stringBuilder.Append("bestscore: " + pi.bestScore);
-            BR();
-            stringBuilder.Append("bestnormal: " + pi.bestNormalTime);
-            BR();
-            stringBuilder.Append("besthard: " + pi.bestHardTime);
-            BR();
-            stringBuilder.Append("bestspecial: " + pi.bestSpecialTime);
+            //Last used character
+            stringBuilder.Append("<table><tr><td class=\"c");
+            stringBuilder.Append(Convert.ToString((int)latestEntry.character, 16).PadLeft(2, '0'));
+            stringBuilder.Append("\"/></tr></table>");
             BR();
 
-            stringBuilder.Append("bestdepthrank: " + pi.bestLevelRank);
-            BR();
-            stringBuilder.Append("bestscorerank: " + pi.bestScoreRank);
-            BR();
-            stringBuilder.Append("bestnormalrank: " + pi.bestNormalTimeRank);
-            BR();
-            stringBuilder.Append("besthardrank: " + pi.bestHardTimeRank);
-            BR();
-            stringBuilder.Append("bestspecialrank: " + pi.bestSpecialTimeRank);
-            BR();
-
-            stringBuilder.Append("top10depth: " + pi.topLevelsAverage);
-            BR();
-            stringBuilder.Append("top10score: " + pi.topScoresAverage);
-            BR();
-            stringBuilder.Append("top5time: " + pi.topTimesAverage);
+            //Info
+            PlayerAddition addition = null;
+            if (Program.additions.ContainsKey(pi.id)) addition = Program.additions[pi.id];
+            if (addition != null) { stringBuilder.Append(addition.html); BR(); }
+            if (latestEntry.platform == Platform.Steam)
+            {
+                stringBuilder.Append("<a href=\"https://steamcommunity.com/profiles/");
+                stringBuilder.Append(pi.id);
+                stringBuilder.AppendLine("\">Visit Steam profile</a><br />");
+            }
             BR();
 
-            pi.entries.Sort((x, y) => (y.timestamp.CompareTo(x.timestamp)));
+            //Accomplishments
+            if (accomplishments.Count > 0)
+            {
+                stringBuilder.AppendLine("<table>");
+                for (int i = 0; i < accomplishments.Count; i++)
+                {
+                    WriteKeyValue("<img src=\"" + accomplishments[i].icon + "\">", "<b>" + accomplishments[i].name + "</b>: " + accomplishments[i].description);
+                }
+                stringBuilder.AppendLine("</table><br />");
+            }
+
+            //From here on, do not show links until hovered
+            stringBuilder.AppendLine("<div class=\"hidelink\">");
+
+            //General stats
+            stringBuilder.AppendLine("<font size=\"5\">General statistics</font><br />");
+            stringBuilder.AppendLine("<table>");
+            WriteKeyValue("Runs", pi.entries.Count);
+            WriteKeyValue("Total playtime", PlayerEntry.GetTime(totalFrames));
+            WriteKeyValue("Normal clears", normalClears);
+            WriteKeyValue("Sunken City visits", scVisits);
+            WriteKeyValue("Hard clears", hardClears);
+            WriteKeyValue("CO visits", coVisits);
+            WriteKeyValue("Special clears", specialClears);
+            stringBuilder.AppendLine("</table><br /><br />");
+
+            //Top average scores
+            stringBuilder.AppendLine("<font size=\"5\">Top averages</font><br />");
+            stringBuilder.AppendLine("<table>");
+            int wholePart = (int)Math.Floor(pi.topLevelsAverage);
+            float fraction = pi.topLevelsAverage - wholePart;
+            stringBuilder.Append("<tr><td><b>Top 10 average depth</b></td><td>");
+            stringBuilder.Append(PlayerEntry.GetLevel(wholePart));
+            stringBuilder.Append("<font size=\"1\">.");
+            string fractionalString = Convert.ToString(Math.Round(fraction, 3));
+            if (fractionalString.Length < 2) fractionalString = "000";
+            else
+            {
+                fractionalString = fractionalString.Substring(2).PadRight(3, '0');
+            }
+            stringBuilder.Append(fractionalString);
+            stringBuilder.Append("</font>");
+            stringBuilder.AppendLine("</td></tr>");
+            WriteKeyValue("Top 10 average score", PlayerEntry.GetScore(pi.topScoresAverage));
+            WriteKeyValue("Top 5 average time", PlayerEntry.GetTime(pi.topTimesAverage));
+            stringBuilder.AppendLine("</table><br /><br />");
+
+            //Best rankings
+            stringBuilder.AppendLine("<font size=\"5\">Best rankings</font><br />");
+            stringBuilder.AppendLine("<table>");
+            WriteTimestampedValue("Best depth ranking", pi.bestLevelRank, pi.bestLevelRankDates);
+            WriteTimestampedValue("Best score ranking", pi.bestScoreRank, pi.bestScoreRankDates);
+            if (pi.bestNormalTimeRankDates.Count == 0) WriteKeyValue("Best Normal ranking", "<i>N/A</i>");
+            else WriteTimestampedValue("Best Normal ranking", pi.bestNormalTimeRank, pi.bestNormalTimeRankDates);
+            if (pi.bestHardTimeRankDates.Count == 0) WriteKeyValue("Best Hard ranking", "<i>N/A</i>");
+            else WriteTimestampedValue("Best Hard ranking", pi.bestHardTimeRank, pi.bestHardTimeRankDates);
+            if (pi.bestSpecialTimeRankDates.Count == 0) WriteKeyValue("Best Special ranking", "<i>N/A</i>");
+            else WriteTimestampedValue("Best Special ranking", pi.bestSpecialTimeRank, pi.bestSpecialTimeRankDates);
+            stringBuilder.AppendLine("</table><br /><br />");
+
+            //Top results
+            stringBuilder.AppendLine("<font size=\"5\">Top results</font><br />");
+            stringBuilder.AppendLine("<table>");
+            WriteTimestampedValue("Best depth", PlayerEntry.GetLevel(pi.bestLevel), pi.bestLevelDates);
+            WriteTimestampedValue("Best score", PlayerEntry.GetScore(pi.bestScore), pi.bestScoreDate);
+            if (pi.bestNormalTime == -1) WriteKeyValue("Fastest Normal clear", "<i>N/A</i>");
+            else WriteTimestampedValue("Fastest Normal clear", PlayerEntry.GetTime(pi.bestNormalTime), pi.bestNormalTimeDate);
+            if (pi.bestHardTime == -1) WriteKeyValue("Fastest Hard clear", "<i>N/A</i>");
+            else WriteTimestampedValue("Fastest Hard clear", PlayerEntry.GetTime(pi.bestHardTime), pi.bestHardTimeDate);
+            if (pi.bestSpecialTime == -1) WriteKeyValue("Fastest Special clear", "<i>N/A</i>");
+            else WriteTimestampedValue("Fastest Special clear", PlayerEntry.GetTime(pi.bestSpecialTime), pi.bestSpecialTimeDate);
+            stringBuilder.AppendLine("</table><br /><br />");
+
+            //All results
+            pi.entries.Sort((x, y) => (y.timestamp.CompareTo(x.timestamp))); //Sort in reverse chronological order for display
+            stringBuilder.AppendLine("<font size=\"5\">All results</font><br />");
+            stringBuilder.AppendLine("<table style=\"min-width: 0.5em;\">");
+            
             for (int i = 0; i < pi.entries.Count; i++)
             {
                 ExtendedPlayerEntry epe = pi.entries[i];
-                stringBuilder.Append(epe.timestamp + " - " + epe.level + " - " + epe.score + " - " + epe.GetTime());
-                BR();
+                bool clear = (epe.runend == RunEndCause.NormalClear || epe.runend == RunEndCause.HardClear || epe.runend == RunEndCause.SpecialClear);
+                stringBuilder.Append("<tr><td>");
+                string tsString = Program.IntTimestampToString(epe.timestamp);
+                stringBuilder.Append("&nbsp;<a href=\"");
+                stringBuilder.Append(tsString);
+                stringBuilder.Append("_depth.html\">");
+                stringBuilder.Append(tsString);
+                stringBuilder.Append("</a>&nbsp;");
+                stringBuilder.Append("</td><td /><td class=\"c");
+                stringBuilder.Append(Convert.ToString((int)epe.character, 16).PadLeft(2, '0'));
+                stringBuilder.Append("\" /><td /><td>#");
+                stringBuilder.Append(epe.levelRank);
+                stringBuilder.Append("</td><td");
+                if (clear) stringBuilder.Append(" class=\"clear\">");
+                else stringBuilder.Append(">");
+                stringBuilder.Append(epe.GetLevel());
+                stringBuilder.Append("</td><td /><td>#");
+                stringBuilder.Append(epe.scoreRank);
+                stringBuilder.Append("</td><td>$");
+                stringBuilder.Append(epe.GetScore());
+                if (clear)
+                {
+                    stringBuilder.Append("</td><td /><td>#");
+                    switch(epe.runend)
+                    {
+                        case RunEndCause.NormalClear: stringBuilder.Append(epe.normalTimeRank); break;
+                        case RunEndCause.HardClear: stringBuilder.Append(epe.hardTimeRank); break;
+                        case RunEndCause.SpecialClear: stringBuilder.Append(epe.specialTimeRank); break;
+                    }
+                    stringBuilder.Append("</td><td>");
+                    stringBuilder.Append(epe.GetTime());
+                }
+                stringBuilder.AppendLine("</td></tr>");
             }
+            stringBuilder.AppendLine("</table><br />");
 
             //Finish
-            WriteFooter(PageType.Player, true);
+            stringBuilder.AppendLine("</div>"); //hidelink end
+            WriteFooter(PageType.Player, false);
 
             //Write to file
             return stringBuilder.ToString();
@@ -408,7 +592,7 @@ namespace Spelunky2LeaderboardGenerator
 
         public void BR()
         {
-            stringBuilder.Append("<br />");
+            stringBuilder.AppendLine("<br />");
         }
 
         public void WriteHeader(PageType pageType, string customTitle = null)
@@ -425,28 +609,13 @@ namespace Spelunky2LeaderboardGenerator
                 stringBuilder.Append(" ");
                 stringBuilder.Append(dateTime.Year);
                 stringBuilder.Append("-");
-                stringBuilder.Append(dateTime.Month);
+                stringBuilder.Append(Convert.ToString(dateTime.Month).PadLeft(2, '0'));
                 stringBuilder.Append("-");
-                stringBuilder.Append(dateTime.Day);
+                stringBuilder.Append(Convert.ToString(dateTime.Day).PadLeft(2, '0'));
             }
             stringBuilder.Append(" - Spelunky 2 leaderboards (unofficial)");
             stringBuilder.AppendLine("</title>");
-            stringBuilder.AppendLine("<style>");
-            stringBuilder.AppendLine(styleCss);
-            //Character CSS
-            for (int i = 0; i < Convert.ToInt32(Character.ClassicGuy) + 1; i++)
-            {
-                stringBuilder.Append(".c");
-                stringBuilder.AppendLine(Convert.ToString(i, 16).PadLeft(2, '0'));
-                stringBuilder.AppendLine("{");
-                stringBuilder.Append("    background-image: url(\"");
-                stringBuilder.Append(Convert.ToString((Character)i));
-                stringBuilder.AppendLine(".png\");");
-                stringBuilder.AppendLine("    width: 64px;");
-                stringBuilder.AppendLine("    height: 32px;");
-                stringBuilder.AppendLine("}"); ;
-            }
-            stringBuilder.AppendLine("</style></head>");
+            stringBuilder.AppendLine("<link rel=\"stylesheet\" href=\"style.css\" /></head>");
         }
 
         public void WriteDateNavigation(string pagefile)
@@ -468,11 +637,8 @@ namespace Spelunky2LeaderboardGenerator
             {
                 stringBuilder.Append("<a href=\"");
                 DateTime tomorrow = dateTime.AddDays(1);
-                if (!(tomorrow.Year == DateTime.UtcNow.Year && tomorrow.Month == DateTime.UtcNow.Month && tomorrow.Day == DateTime.UtcNow.Day))
-                {
-                    stringBuilder.Append(Program.GetYYYYMMDD(tomorrow));
-                    stringBuilder.Append("_");
-                }
+                stringBuilder.Append(Program.GetYYYYMMDD(tomorrow));
+                stringBuilder.Append("_");
                 stringBuilder.Append(pagefile);
                 stringBuilder.Append("\">");
             }
@@ -540,7 +706,7 @@ namespace Spelunky2LeaderboardGenerator
             stringBuilder.AppendLine("</html>");
         }
 
-        public void WriteEntry(PlayerEntry entry, int rank, PageType sortedBy)
+        public void WriteEntry(PlayerEntry entry, int rank, PageType sortedBy, string path)
         {
             //Rank
             stringBuilder.Append("<tr><td>");
@@ -549,7 +715,7 @@ namespace Spelunky2LeaderboardGenerator
             stringBuilder.Append("</td><td class=\"");
             switch (entry.platform)
             {
-                case Platform.PC: stringBuilder.Append("pc"); break;
+                case Platform.Steam: stringBuilder.Append("pc"); break;
                 case Platform.PS4: stringBuilder.Append("ps4"); break;
                 default: stringBuilder.Append("unknown"); break;
             }
@@ -575,8 +741,17 @@ namespace Spelunky2LeaderboardGenerator
             stringBuilder.Append(Convert.ToString(Convert.ToInt16(entry.character), 16).PadLeft(2, '0'));
             stringBuilder.Append("\"/>");
             //Name
+            string playerFile = Convert.ToString((long)entry.id, 16).PadLeft(16, '0') + ".html";
+            if (ongoing && !File.Exists(path + playerFile)) playerFile = null;
             stringBuilder.Append("<td>");
+            if (playerFile != null)
+            {
+                stringBuilder.Append("<a href=\"");
+                stringBuilder.Append(playerFile);
+                stringBuilder.Append("\">");
+            }
             stringBuilder.Append(entry.name.Replace("<", "").Replace(">", ""));
+            if (playerFile != null) stringBuilder.Append("</a>");
             switch (sortedBy)
             {
                 case PageType.Depth:
@@ -610,7 +785,7 @@ namespace Spelunky2LeaderboardGenerator
             stringBuilder.AppendLine("</td></tr>");
         }
 
-        public void WriteTimeRanking(StringBuilder stringBuilder, List<PlayerEntry> timeEntries, string description, PageType sortedBy)
+        public void WriteTimeRanking(StringBuilder stringBuilder, List<PlayerEntry> timeEntries, string description, PageType sortedBy, string path)
         {
             if (timeEntries.Count == 0)
             {
@@ -630,115 +805,62 @@ namespace Spelunky2LeaderboardGenerator
                 stringBuilder.AppendLine("<table border=\"1\">");
                 for (int i = 0; i < timeEntries.Count; i++)
                 {
-                    WriteEntry(timeEntries[i], i + 1, sortedBy);
+                    WriteEntry(timeEntries[i], i + 1, sortedBy, path);
                 }
                 stringBuilder.AppendLine("</table>");
             }
         }
 
-        const string styleCss = @"
-table td
-{
-	border: 1px;
-	border-style: solid;
-	border-radius: 2px;
-	min-width: 3.5em;
-	height: 1.25em;
-	text-align: center;
-}
+        public void WriteKeyValue(string key, int value)
+        {
+            WriteKeyValue(key, Convert.ToString(value));
+        }
 
-.pc
-{
-    background-image: url(""pc.png"");
-    width: 64px;
-    height: 32px;
-}
+        public void WriteKeyValue(string key, string value)
+        {
+            stringBuilder.Append("<tr><td><b>");
+            stringBuilder.Append(key);
+            stringBuilder.Append("</b></td><td>");
+            stringBuilder.Append(value);
+            stringBuilder.AppendLine("</td></tr>");
+        }
 
-.ps4
-{
-    background-image: url(""ps4.png"");
-    width: 64px;
-    height: 32px;
-}
+        public void WriteTimestampedValue(string key, int value, int timestamp)
+        {
+            WriteTimestampedValue(key, Convert.ToString(value), timestamp);
+        }
 
-.unknown
-{
-    background-image: url(""unknown.png"");
-    width: 64px;
-    height: 32px;
-}
+        public void WriteTimestampedValue(string key, string value, int timestamp)
+        {
+            List<int> timestamps = new List<int>();
+            timestamps.Add(timestamp);
+            WriteTimestampedValue(key, value, timestamps);
+        }
 
-.clear
-{
-    background-color: #009933;
-    color: white;
-}
+        public void WriteTimestampedValue(string key, int value, List<int> timestamps)
+        {
+            WriteTimestampedValue(key, Convert.ToString(value), timestamps);
+        }
 
-.top
-{
-    background-color: black;
-    color: white;
-}
-
-.danger
-{
-    background-color: #ff9966;
-}
-
-.deadly
-{
-    background-color: #cc0000;
-    color: white;
-}
-
-.w1
-{
-    background-color: #ff6666;
-}
-
-.w2
-{
-    background-color: #339933;
-}
-
-.w3
-{
-    background-color: #d9d9d9;
-}
-
-.w4
-{
-    background-color: #00b3b3;
-}
-
-.w5
-{
-    background-color: #99c2ff;
-}
-
-.w6
-{
-    background-color: #3333cc;
-}
-
-.w7
-{
-    background-color: #8cd9b3;
-}
-
-.w75
-{
-    background-color: #262626;
-}
-
-#count
-{
-    border: 1px;
-    border-style: solid;
-    font-size: 150%;
-    text-margin: 20px;
-}
-";
+        public void WriteTimestampedValue(string key, string value, List<int> timestamps)
+        {
+            stringBuilder.Append("<tr><td><b>");
+            stringBuilder.Append(key);
+            stringBuilder.Append("</b></td><td>");
+            stringBuilder.Append(value);
+            stringBuilder.Append("</td><td>");
+            for (int i = 0; i < timestamps.Count; i++)
+            {
+                if (i > 0) stringBuilder.Append("<br />");
+                string tsString = Program.IntTimestampToString(timestamps[i]);
+                stringBuilder.Append("<a href=\"");
+                stringBuilder.Append(tsString);
+                stringBuilder.Append("_depth.html\">");
+                stringBuilder.Append(tsString);
+                stringBuilder.Append("</a>");
+            }
+            stringBuilder.AppendLine("</td></tr>");
+        }
 
         const string countdownJS = @"
 <script>

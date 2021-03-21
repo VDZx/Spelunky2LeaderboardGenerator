@@ -19,6 +19,7 @@ namespace Spelunky2LeaderboardGenerator
 {
     class Program
     {
+        public const string FILE_ADDITIONS = "additions.json";
         public const string FILE_BLACKLIST = "blacklist.json";
         public const string FILE_CURRENT = "current.json";
         public const string FILE_PLAYERS = "players.json";
@@ -27,6 +28,7 @@ namespace Spelunky2LeaderboardGenerator
         public const int FIRSTRUN_MONTH = 9;
         public const int FIRSTRUN_DAY = 14;
 
+        public static Dictionary<ulong, PlayerAddition> additions = new Dictionary<ulong, PlayerAddition>();
         public static List<ulong> blacklist = new List<ulong>();
         public static Config config = new Config();
         public static Dictionary<ulong, PlayerInfo> players = null;
@@ -91,6 +93,7 @@ namespace Spelunky2LeaderboardGenerator
                         break;
                     case "--update":
                         workType = WorkType.UpdateCurrent;
+                        datePrefix = GetYYYYMMDD(DateTime.UtcNow) + "_";
                         Log("Work: Update");
                         break;
                     case "--yesterday":
@@ -113,16 +116,19 @@ namespace Spelunky2LeaderboardGenerator
 
             //Load player data
             if (workType != WorkType.UpdateCurrent) LoadPlayerData();
+            //Load blacklist
+            LoadBlacklist();
 
+            //Work
+            LeaderboardData data = null;
             switch (workType)
             {
                 case WorkType.Rebuild:
-                    workType = WorkType.GetDaily;
                     DateTime now = DateTime.UtcNow;
                     while (!(year == now.Year && month == now.Month && day == now.Day))
                     {
                         Log("Regenerating daily for " + GetYYYYMMDD(year, month, day));
-                        LoadAndGenerate(path, year, month, day, GetYYYYMMDD(year, month, day) + "_");
+                        data = LoadAndGenerate(path, year, month, day, GetYYYYMMDD(year, month, day) + "_");
                         DateTime next = new DateTime(year, month, day, 12, 00, 00).AddDays(1);
                         year = next.Year;
                         month = next.Month;
@@ -130,20 +136,47 @@ namespace Spelunky2LeaderboardGenerator
                     }
                     break;
                 default:
-                    LoadAndGenerate(path, year, month, day, datePrefix);
+                    data = LoadAndGenerate(path, year, month, day, datePrefix);
                     break;
             }
 
-            if (workType != WorkType.UpdateCurrent)
+            ExportBlacklist(); //Update local file with auto-blacklisted players
+
+            if (workType != WorkType.UpdateCurrent && data != null)
             {
                 //Save player data
                 ExportPlayers();
                 //Generate player pages
+                if (File.Exists(AppDomain.CurrentDomain.BaseDirectory + FILE_ADDITIONS))
+                {
+                    List<PlayerAddition> adds = DeserializeFromFile<List<PlayerAddition>>(AppDomain.CurrentDomain.BaseDirectory + FILE_ADDITIONS, "Player Profile Additions");
+                    if (adds != null)
+                    {
+                        for (int i = 0; i < adds.Count; i++) additions.Add(adds[i].id, adds[i]);
+                    }
+                }
                 PageWriter pageWriter = new PageWriter();
+                Log("Writing player pages.");
                 foreach(KeyValuePair<ulong, PlayerInfo> kp in players)
                 {
-                    WriteFile(path + Convert.ToString((long)kp.Key, 16).PadLeft(16, '0') + ".html", pageWriter.GeneratePlayerPage(kp.Value));
+                    //When just doing a daily update, only rewrite the pages for players who participated in that daily
+                    if (workType == WorkType.GetDaily)
+                    {
+                        bool hasParticipated = false;
+                        for (int i = 0; i < data.allEntries.Length; i++)
+                        {
+                            if (data.allEntries[i].id == kp.Key)
+                            {
+                                hasParticipated = true;
+                                break;
+                            }
+                        }
+                        if (!hasParticipated) continue;
+                    }
+                    //Generate and write
+                    WriteFile(path + Convert.ToString((long)kp.Key, 16).PadLeft(16, '0') + ".html", pageWriter.GeneratePlayerPage(kp.Value), true);
                 }
+                Log("Finished writing player pages.");
             }
 
             Log("Done!");
@@ -152,24 +185,75 @@ namespace Spelunky2LeaderboardGenerator
 #endif
         }
 
+        static void AutoBlacklist(LeaderboardData data)
+        {
+            for (int i = 0; i < data.allEntries.Length; i++)
+            {
+                PlayerEntry e = data.allEntries[i];
+                string reasonToAdd = null;
+                if (e.score > 11000000)
+                {
+                    reasonToAdd = "Score over $11 million (" + e.GetScore() + ").";
+                }
+                else if (e.runend == RunEndCause.NormalClear && e.runframes < 2 * 60 * 60)
+                {
+                    reasonToAdd = "Normal clear in under two minutes (" + e.GetTime() + ").";
+                }
+                else if (e.runend == RunEndCause.NormalClear && e.runframes < 4 * 60 * 60)
+                {
+                    reasonToAdd = "Hard clear in under four minutes (" + e.GetTime() + ").";
+                }
+                else if (e.runend == RunEndCause.SpecialClear && e.runframes < 50 * 60 * 60)
+                {
+                    reasonToAdd = "Special clear in under 50 minutes (" + e.GetTime() + ").";
+                }
+                else if (e.level > 4 && e.runframes < e.level * 4 * 60)
+                {
+                    reasonToAdd = "Less than 4 seconds per level average (" + e.GetLevel() + " in " + e.GetTime() + ").";
+                }
+
+                if (reasonToAdd != null)
+                {
+                    if (AddToBlacklist(e.id)) BlacklistLog("Adding " + e.name + " (" + Convert.ToString((long)e.id, 16) + ") to blacklist: " + reasonToAdd);
+                }
+            }
+        }
+
+        static bool AddToBlacklist(ulong id)
+        {
+            for (int i = 0; i < blacklist.Count; i++) if (blacklist[i] == id) return false;
+            blacklist.Add(id);
+            return true;
+        }
+
         static void ExportPlayers()
         {
+#if DEBUG
+            Log("Player Data serialization disabled in debug mode! (It takes ages.)");
+            return;
+#endif
             //Need to convert to list to serialize, ulong dicts aren't supported :(
             List<PlayerInfo> playerInfos = new List<PlayerInfo>();
             foreach (KeyValuePair<ulong, PlayerInfo> kp in players)
             {
                 playerInfos.Add(kp.Value);
             }
-            SerializeToFile(FILE_PLAYERS, playerInfos, "Player Data");
+            SerializeToFile(AppDomain.CurrentDomain.BaseDirectory + FILE_PLAYERS, playerInfos, "Player Data");
         }
 
-        static void LoadAndGenerate(string path, int year, int month, int day, string datePrefix)
+        static void ExportBlacklist()
+        {
+            SerializeToFile(AppDomain.CurrentDomain.BaseDirectory + FILE_BLACKLIST, blacklist, "Blacklist");
+        }
+
+        static LeaderboardData LoadAndGenerate(string path, int year, int month, int day, string datePrefix)
         {
             bool ongoing = (workType == WorkType.UpdateCurrent);
 
             //Load entries
             LeaderboardData data = LoadEntries(path, year, month, day);
             Log("Finished reading data.");
+            AutoBlacklist(data);
             //Filter pirates and blacklisted players
             data.FilterPirates();
             data.FilterBlacklisted();
@@ -185,21 +269,24 @@ namespace Spelunky2LeaderboardGenerator
                 if (ongoing) data.ExportJson(path + FILE_CURRENT);
                 else data.ExportJson(path + GetYYYYMMDD(year, month, day) + ".json");
             }
-            WriteFile(path + datePrefix + "depth.html", pw.GeneratePage(datePrefix + "depth.html", PageType.Depth, "depth.html"));
+            WriteFile(path + datePrefix + "depth.html", pw.GeneratePage(datePrefix + "depth.html", PageType.Depth, "depth.html", path));
+            if (workType == WorkType.UpdateCurrent) File.Copy(path + datePrefix + "depth.html", path + "depth.html", true);
             for (int i = 0; i < data.allEntries.Length; i++) extendedEntries[data.allEntries[i].id].levelRank = i + 1;
             //Score sort
             data.SortByScore("all entries");
-            WriteFile(path + datePrefix + "score.html", pw.GeneratePage(datePrefix + "score.html", PageType.Score, "score.html"));
+            WriteFile(path + datePrefix + "score.html", pw.GeneratePage(datePrefix + "score.html", PageType.Score, "score.html", path));
+            if (workType == WorkType.UpdateCurrent) File.Copy(path + datePrefix + "score.html", path + "score.html", true);
             for (int i = 0; i < data.allEntries.Length; i++) extendedEntries[data.allEntries[i].id].scoreRank = i + 1;
             //Normal, Hard and CO sort
             data.SortByTime(" all entries ");
-            WriteFile(path + datePrefix + "time.html", pw.GeneratePage(datePrefix + "time.html", PageType.Time, "time.html"));
+            WriteFile(path + datePrefix + "time.html", pw.GeneratePage(datePrefix + "time.html", PageType.Time, "time.html", path));
+            if (workType == WorkType.UpdateCurrent) File.Copy(path + datePrefix + "time.html", path + "time.html", true);
+            int normalRank = 1;
+            int hardRank = 1;
+            int specialRank = 1;
             for (int i = 0; i < data.allEntries.Length; i++)
             {
                 ulong id = data.allEntries[i].id;
-                int normalRank = 1;
-                int hardRank = 1;
-                int specialRank = 1;
                 switch(data.allEntries[i].runend)
                 {
                     case RunEndCause.NormalClear:
@@ -218,24 +305,41 @@ namespace Spelunky2LeaderboardGenerator
             }
             //Stats
             WriteFile(path + datePrefix + "stats.html", pw.GenerateStats(datePrefix + "stats.html"));
+            if (workType == WorkType.UpdateCurrent) File.Copy(path + datePrefix + "stats.html", path + "stats.html", true);
             //Add entries to players
-            foreach(KeyValuePair<ulong, ExtendedPlayerEntry> kp in extendedEntries)
+            if (workType != WorkType.UpdateCurrent)
             {
-                if (!players.ContainsKey(kp.Key)) players.Add(kp.Key, new PlayerInfo());
-                players[kp.Key].AddEntry(kp.Value);
+                foreach (KeyValuePair<ulong, ExtendedPlayerEntry> kp in extendedEntries)
+                {
+                    if (!players.ContainsKey(kp.Key)) players.Add(kp.Key, new PlayerInfo());
+                    players[kp.Key].AddEntry(kp.Value);
+                }
             }
+
+            return data;
         }
 
         static void LoadPlayerData()
         {
             players = new Dictionary<ulong, PlayerInfo>();
-            if (!File.Exists(FILE_PLAYERS))
+            if (!File.Exists(AppDomain.CurrentDomain.BaseDirectory + FILE_PLAYERS))
             {
                 Log("Players file '" + FILE_PLAYERS + "' does not exist! Skipping player data loading.");
                 return;
             }
-            List<PlayerInfo> playerInfos = DeserializeFromFile<List<PlayerInfo>>(FILE_PLAYERS, "Player Data");
+            List<PlayerInfo> playerInfos = DeserializeFromFile<List<PlayerInfo>>(AppDomain.CurrentDomain.BaseDirectory + FILE_PLAYERS, "Player Data");
             for (int i = 0; i < playerInfos.Count; i++) players.Add(playerInfos[i].id, playerInfos[i]);
+        }
+
+        static void LoadBlacklist()
+        {
+            blacklist.Clear();
+            if (!File.Exists(AppDomain.CurrentDomain.BaseDirectory + FILE_BLACKLIST))
+            {
+                Log("Blacklist file '" + FILE_BLACKLIST + "' does not exist! Generating new blacklist!");
+                return;
+            }
+            blacklist = DeserializeFromFile<List<ulong>>(AppDomain.CurrentDomain.BaseDirectory + FILE_BLACKLIST, "Blacklist");
         }
 
         static LeaderboardData LoadEntries(string path, int year, int month, int day)
@@ -256,6 +360,7 @@ namespace Spelunky2LeaderboardGenerator
                         switch (workType)
                         {
                             case WorkType.GetDaily:
+                            case WorkType.Rebuild:
                                 jsonPath = path + GetYYYYMMDD(year, month, day) + ".json";
                                 break;
                             case WorkType.UpdateCurrent:
@@ -272,9 +377,9 @@ namespace Spelunky2LeaderboardGenerator
             throw new Exception();
         }
 
-        public static void WriteFile(string filename, string content)
+        public static void WriteFile(string filename, string content, bool silent = false)
         {
-            Log("Writing " + filename);
+            if (!silent) Log("Writing " + filename);
             StreamWriter sw = new StreamWriter(filename);
             sw.Write(content);
             sw.Close();
@@ -293,6 +398,12 @@ namespace Spelunky2LeaderboardGenerator
         public static int TimestampToInt(int year, int month, int day)
         {
             return year * 10000 + month * 100 + day;
+        }
+
+        public static string IntTimestampToString(int timestamp)
+        {
+            string raw = Convert.ToString(timestamp);
+            return raw.Substring(0, 4) + "-" + raw.Substring(4, 2) + "-" + raw.Substring(6, 2);
         }
 
         private static void InitSerializer()
@@ -342,6 +453,17 @@ namespace Spelunky2LeaderboardGenerator
         {
             msg = "[" + DateTime.UtcNow.ToString() + "] " + msg;
             if (!silent) Console.WriteLine(msg);
+        }
+
+        const string FILE_LOG_BLACKLIST = "blacklist.log";
+        static StreamWriter loggerBlacklist = null;
+        static void BlacklistLog(string msg)
+        {
+            if (loggerBlacklist == null) loggerBlacklist = new StreamWriter(FILE_LOG_BLACKLIST, true);
+            msg = "[" + DateTime.UtcNow.ToString() + "] " + msg;
+            if (!silent) Console.WriteLine(msg);
+            loggerBlacklist.WriteLine(msg);
+            loggerBlacklist.Flush();
         }
     }
 }

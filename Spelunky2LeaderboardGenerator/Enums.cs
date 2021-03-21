@@ -63,7 +63,7 @@ namespace Spelunky2LeaderboardGenerator
     public enum Platform
     {
         Unknown = 0x00,
-        PC = 0x12,
+        Steam = 0x12,
         PS4 = 0x30
     }
 

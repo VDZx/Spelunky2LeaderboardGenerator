@@ -1,0 +1,239 @@
+table td
+{
+	border: 1px;
+	border-style: solid;
+	border-radius: 2px;
+	min-width: 3.5em;
+	height: 1.25em;
+	text-align: center;
+}
+
+.pc
+{
+    background-image: url("pc.png");
+    width: 64px;
+    height: 32px;
+}
+
+.ps4
+{
+    background-image: url("ps4.png");
+    width: 64px;
+    height: 32px;
+}
+
+.unknown
+{
+    background-image: url("unknown.png");
+    width: 64px;
+    height: 32px;
+}
+
+.clear
+{
+    background-color: #009933;
+    color: white;
+}
+
+.top
+{
+    background-color: black;
+    color: white;
+}
+
+.hidelink a:link
+{
+	color: black;
+	text-decoration: none;
+}
+
+.hidelink a:visited
+{
+	color: black;
+	text-decoration: none;
+}
+
+.hidelink a:hover
+{
+	text-decoration: underline;
+}
+
+.danger
+{
+    background-color: #ff9966;
+}
+
+.deadly
+{
+    background-color: #cc0000;
+    color: white;
+}
+
+.w1
+{
+    background-color: #ff6666;
+}
+
+.w2
+{
+    background-color: #339933;
+}
+
+.w3
+{
+    background-color: #d9d9d9;
+}
+
+.w4
+{
+    background-color: #00b3b3;
+}
+
+.w5
+{
+    background-color: #99c2ff;
+}
+
+.w6
+{
+    background-color: #3333cc;
+}
+
+.w7
+{
+    background-color: #8cd9b3;
+}
+
+.w75
+{
+    background-color: #262626;
+}
+
+#count
+{
+    border: 1px;
+    border-style: solid;
+    font-size: 150%;
+    text-margin: 20px;
+}
+
+.c00
+{
+    background-image: url("Ana.png");
+    width: 64px;
+    height: 32px;
+}
+.c01
+{
+    background-image: url("Margaret.png");
+    width: 64px;
+    height: 32px;
+}
+.c02
+{
+    background-image: url("Colin.png");
+    width: 64px;
+    height: 32px;
+}
+.c03
+{
+    background-image: url("Roffy.png");
+    width: 64px;
+    height: 32px;
+}
+.c04
+{
+    background-image: url("Alto.png");
+    width: 64px;
+    height: 32px;
+}
+.c05
+{
+    background-image: url("Liz.png");
+    width: 64px;
+    height: 32px;
+}
+.c06
+{
+    background-image: url("Nekka.png");
+    width: 64px;
+    height: 32px;
+}
+.c07
+{
+    background-image: url("LISE.png");
+    width: 64px;
+    height: 32px;
+}
+.c08
+{
+    background-image: url("Coco.png");
+    width: 64px;
+    height: 32px;
+}
+.c09
+{
+    background-image: url("Manfred.png");
+    width: 64px;
+    height: 32px;
+}
+.c0a
+{
+    background-image: url("Jay.png");
+    width: 64px;
+    height: 32px;
+}
+.c0b
+{
+    background-image: url("Tina.png");
+    width: 64px;
+    height: 32px;
+}
+.c0c
+{
+    background-image: url("Valerie.png");
+    width: 64px;
+    height: 32px;
+}
+.c0d
+{
+    background-image: url("Au.png");
+    width: 64px;
+    height: 32px;
+}
+.c0e
+{
+    background-image: url("Demi.png");
+    width: 64px;
+    height: 32px;
+}
+.c0f
+{
+    background-image: url("Pilot.png");
+    width: 64px;
+    height: 32px;
+}
+.c10
+{
+    background-image: url("Airyn.png");
+    width: 64px;
+    height: 32px;
+}
+.c11
+{
+    background-image: url("Dirk.png");
+    width: 64px;
+    height: 32px;
+}
+.c12
+{
+    background-image: url("Guy.png");
+    width: 64px;
+    height: 32px;
+}
+.c13
+{
+    background-image: url("ClassicGuy.png");
+    width: 64px;
+    height: 32px;
+}

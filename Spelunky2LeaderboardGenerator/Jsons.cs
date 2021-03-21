@@ -60,6 +60,11 @@ namespace Spelunky2LeaderboardGenerator
 
         public static string GetTime(int frames)
         {
+            return GetTime((long)frames);
+        }
+
+        public static string GetTime(long frames)
+        {
             float realSeconds = (float)frames * 0.01666666666666666666666666666667f;
             int realMinutes = Convert.ToInt32(Math.Floor(realSeconds / 60f));
             int realHours = Convert.ToInt32(Math.Floor((float)realMinutes / 60f));
@@ -315,6 +320,26 @@ namespace Spelunky2LeaderboardGenerator
             }
             if (!indexedEntries.ContainsKey(timestamp)) return null;
             return indexedEntries[timestamp];
+        }
+    }
+
+    public class PlayerAddition
+    {
+        public ulong id = 0;
+        public string html = string.Empty;
+    }
+
+    public class Accomplishment
+    {
+        public string name;
+        public string description;
+        public string icon;
+
+        public Accomplishment(string name, string description, string icon)
+        {
+            this.name = name;
+            this.description = description;
+            this.icon = icon;
         }
     }
 }
