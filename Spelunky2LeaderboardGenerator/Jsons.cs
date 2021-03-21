@@ -175,7 +175,9 @@ namespace Spelunky2LeaderboardGenerator
             }
             else if (epe.level == this.bestLevel)
             {
-                this.bestLevelDates.Add(epe.timestamp);
+                bool alreadyHas = false;
+                for (int i = 0; i < this.bestLevelDates.Count; i++) if (this.bestLevelDates[i] == epe.timestamp) alreadyHas = true;
+                if (!alreadyHas) this.bestLevelDates.Add(epe.timestamp);
             }
             //Adjust best score
             if (epe.score > this.bestScore)
@@ -214,33 +216,43 @@ namespace Spelunky2LeaderboardGenerator
             {
                 if (epe.levelRank < this.bestLevelRank) this.bestLevelRankDates.Clear();
                 this.bestLevelRank = epe.levelRank;
-                this.bestLevelRankDates.Add(epe.timestamp);
+                bool alreadyHas = false;
+                for (int i = 0; i < this.bestLevelRankDates.Count; i++) if (this.bestLevelRankDates[i] == epe.timestamp) alreadyHas = true;
+                if (!alreadyHas) this.bestLevelRankDates.Add(epe.timestamp);
             }
             //Adjust best score rank
             if (epe.scoreRank <= this.bestScoreRank || this.bestScoreRank == -1)
             {
                 if (epe.scoreRank < this.bestScoreRank) this.bestScoreRankDates.Clear();
                 this.bestScoreRank = epe.scoreRank;
-                this.bestScoreRankDates.Add(epe.timestamp);
+                bool alreadyHas = false;
+                for (int i = 0; i < this.bestScoreRankDates.Count; i++) if (this.bestScoreRankDates[i] == epe.timestamp) alreadyHas = true;
+                if (!alreadyHas) this.bestScoreRankDates.Add(epe.timestamp);
             }
             //Adjust best time ranks
             if (epe.normalTimeRank != -1 && (epe.normalTimeRank <= this.bestNormalTimeRank || this.bestNormalTimeRank == -1))
             {
                 if (epe.normalTimeRank < this.bestNormalTimeRank) this.bestNormalTimeRankDates.Clear();
                 this.bestNormalTimeRank = epe.normalTimeRank;
-                this.bestNormalTimeRankDates.Add(epe.timestamp);
+                bool alreadyHas = false;
+                for (int i = 0; i < this.bestNormalTimeRankDates.Count; i++) if (this.bestNormalTimeRankDates[i] == epe.timestamp) alreadyHas = true;
+                if (!alreadyHas) this.bestNormalTimeRankDates.Add(epe.timestamp);
             }
             if (epe.hardTimeRank != -1 && (epe.hardTimeRank <= this.bestHardTimeRank || this.bestHardTimeRank == -1))
             {
                 if (epe.hardTimeRank < this.bestHardTimeRank) this.bestHardTimeRankDates.Clear();
                 this.bestHardTimeRank = epe.hardTimeRank;
-                this.bestHardTimeRankDates.Add(epe.timestamp);
+                bool alreadyHas = false;
+                for (int i = 0; i < this.bestHardTimeRankDates.Count; i++) if (this.bestHardTimeRankDates[i] == epe.timestamp) alreadyHas = true;
+                if (!alreadyHas) this.bestHardTimeRankDates.Add(epe.timestamp);
             }
             if (epe.specialTimeRank != -1 && (epe.specialTimeRank <= this.bestSpecialTimeRank || this.bestSpecialTimeRank == -1))
             {
                 if (epe.specialTimeRank < this.bestSpecialTimeRank) this.bestSpecialTimeRankDates.Clear();
                 this.bestSpecialTimeRank = epe.specialTimeRank;
-                this.bestSpecialTimeRankDates.Add(epe.timestamp);
+                bool alreadyHas = false;
+                for (int i = 0; i < this.bestSpecialTimeRankDates.Count; i++) if (this.bestSpecialTimeRankDates[i] == epe.timestamp) alreadyHas = true;
+                if (!alreadyHas) this.bestSpecialTimeRankDates.Add(epe.timestamp);
             }
 
             //Get top entries
