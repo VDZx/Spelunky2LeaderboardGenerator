@@ -105,6 +105,10 @@ namespace Spelunky2LeaderboardGenerator
                         Log("Work: Daily for " + GetYYYYMMDD(date) + " (yesterday)");
                         datePrefix = GetYYYYMMDD(date) + "_";
                         break;
+                    case "--test":
+                        Log(AppDomain.CurrentDomain.BaseDirectory + FILE_LOG_BLACKLIST);
+                        Environment.Exit(0);
+                        break;
                     default:
                         Log("Unrecognized parameter: " + args[i]);
                         break;
@@ -203,9 +207,9 @@ namespace Spelunky2LeaderboardGenerator
                 {
                     reasonToAdd = "Hard clear in under four minutes (" + e.GetTime() + ").";
                 }
-                else if (e.runend == RunEndCause.SpecialClear && e.runframes < 50 * 60 * 60)
+                else if (e.runend == RunEndCause.SpecialClear && e.runframes < 20 * 60 * 60)
                 {
-                    reasonToAdd = "Special clear in under 50 minutes (" + e.GetTime() + ").";
+                    reasonToAdd = "Special clear in under 20 minutes (" + e.GetTime() + ").";
                 }
                 else if (e.level > 4 && e.runframes < e.level * 4 * 60)
                 {
@@ -459,7 +463,7 @@ namespace Spelunky2LeaderboardGenerator
         static StreamWriter loggerBlacklist = null;
         static void BlacklistLog(string msg)
         {
-            if (loggerBlacklist == null) loggerBlacklist = new StreamWriter(FILE_LOG_BLACKLIST, true);
+            if (loggerBlacklist == null) loggerBlacklist = new StreamWriter(AppDomain.CurrentDomain.BaseDirectory + FILE_LOG_BLACKLIST, true);
             msg = "[" + DateTime.UtcNow.ToString() + "] " + msg;
             if (!silent) Console.WriteLine(msg);
             loggerBlacklist.WriteLine(msg);

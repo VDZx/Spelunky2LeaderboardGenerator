@@ -713,13 +713,24 @@ namespace Spelunky2LeaderboardGenerator
             stringBuilder.Append(Convert.ToString(rank));
             //Platform
             stringBuilder.Append("</td><td class=\"");
+            bool knownPlatform = true;
             switch (entry.platform)
             {
                 case Platform.Steam: stringBuilder.Append("pc"); break;
                 case Platform.PS4: stringBuilder.Append("ps4"); break;
-                default: stringBuilder.Append("unknown"); break;
+                default: stringBuilder.Append("unknown"); knownPlatform = false; break;
             }
-            stringBuilder.Append("\" />");
+            if (knownPlatform) stringBuilder.Append("\" />");
+            else
+            {
+#if DEBUG
+                stringBuilder.Append("\" >");
+                stringBuilder.Append(Convert.ToString((int)entry.platform, 16));
+                stringBuilder.Append("</td>");
+#else
+                stringBuilder.Append("\" />"); //Don't expose weirdness to end-users
+#endif
+            }
 #if DEBUG
             if (true)
             {
@@ -869,9 +880,9 @@ setInterval(function()
 {
 	var left = tomorrow - new Date().getTime();
 	if (left > 0) document.getElementById(""count"").innerHTML = ""Challenge ends in "" + getLeft(left);
-	else if (left > -600000)
+	else if (left > -1800000)
 	{
-		left += 600000;
+		left += 1800000;
 		document.getElementById(""count"").innerHTML = ""Challenge finished! Final results in "" + getLeft(left);
 	}
 	else document.getElementById(""count"").innerHTML = ""Challenge finished. <a href=\""{TODAY}_{TYPE}.html\"">Click here to view the final results.</a>"";
