@@ -149,7 +149,7 @@ namespace Spelunky2LeaderboardGenerator
             if (workType != WorkType.UpdateCurrent && data != null)
             {
                 //Save player data
-                ExportPlayers();
+                ExportPlayers(year, month, day, path);
                 //Generate player pages
                 if (File.Exists(AppDomain.CurrentDomain.BaseDirectory + FILE_ADDITIONS))
                 {
@@ -230,9 +230,9 @@ namespace Spelunky2LeaderboardGenerator
             return true;
         }
 
-        static void ExportPlayers()
+        static void ExportPlayers(int year, int month, int day, string path)
         {
-#if DEBUG
+#if FALSE//DEBUG
             Log("Player Data serialization disabled in debug mode! (It takes ages.)");
             return;
 #endif
@@ -243,6 +243,17 @@ namespace Spelunky2LeaderboardGenerator
                 playerInfos.Add(kp.Value);
             }
             SerializeToFile(AppDomain.CurrentDomain.BaseDirectory + FILE_PLAYERS, playerInfos, "Player Data");
+            //Dump individual players
+            int now = Program.TimestampToInt(year, month, day);
+            for (int i = 0; i < playerInfos.Count; i++)
+            {
+                PlayerInfo pi = playerInfos[i];
+                if (pi.entries.Count == 0) continue;
+                bool hasTodayEntry = false;
+                for (int j = 0; j < pi.entries.Count; j++) if (pi.entries[j].timestamp == now) hasTodayEntry = true;
+                if (!hasTodayEntry) continue; //Was not updated today, don't re-dump
+                SerializeToFile(path + Convert.ToString((long)pi.id, 16).PadLeft(16, '0') + ".json", pi, null);
+            }
         }
 
         static void ExportBlacklist()
@@ -419,19 +430,19 @@ namespace Spelunky2LeaderboardGenerator
 
         public static string Serialize(object obj, string description)
         {
-            Program.Log("Serializing " + description + "...");
+            if (description != null) Program.Log("Serializing " + description + "...");
             InitSerializer();
             string json = jss.Serialize(obj);
-            Program.Log("Serialization of " + description + " successful.");
+            if (description != null) Program.Log("Serialization of " + description + " successful.");
             return json;
         }
 
         public static void SerializeToFile(string filename, object obj, string description)
         {
             string json = Serialize(obj, description);
-            Program.Log("Writing JSON for " + description + " to " + filename + "...");
+            if (description != null) Program.Log("Writing JSON for " + description + " to " + filename + "...");
             Program.WriteFile(filename, json);
-            Program.Log("Finished writing JSON for " + description + ".");
+            if (description != null) Program.Log("Finished writing JSON for " + description + ".");
         }
 
         public static T Deserialize<T>(string json, string description)

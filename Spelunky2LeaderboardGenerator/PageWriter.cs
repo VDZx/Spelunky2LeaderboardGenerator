@@ -560,6 +560,7 @@ namespace Spelunky2LeaderboardGenerator
                 stringBuilder.Append(epe.levelRank);
                 stringBuilder.Append("</td><td");
                 if (clear) stringBuilder.Append(" class=\"clear\">");
+                else if (pi.entries[i].level >= COSMIC_OCEAN) stringBuilder.Append(" class=\"co\">");
                 else stringBuilder.Append(">");
                 stringBuilder.Append(epe.GetLevel());
                 stringBuilder.Append("</td><td /><td>#");
@@ -584,7 +585,7 @@ namespace Spelunky2LeaderboardGenerator
 
             //Finish
             stringBuilder.AppendLine("</div>"); //hidelink end
-            WriteFooter(PageType.Player, false);
+            WriteFooter(PageType.Player, true, Convert.ToString((long)pi.id, 16).PadLeft(16, '0') + ".json");
 
             //Write to file
             return stringBuilder.ToString();
@@ -677,7 +678,7 @@ namespace Spelunky2LeaderboardGenerator
             }
         }
 
-        public void WriteFooter(PageType pageType, bool jsonDownloadable)
+        public void WriteFooter(PageType pageType, bool jsonDownloadable, string jsonOutputFile = null)
         {
             if (ongoing)
             {
@@ -694,10 +695,12 @@ namespace Spelunky2LeaderboardGenerator
             if (jsonDownloadable)
             {
                 stringBuilder.Append("<br/><a href=\"");
-                if (ongoing) { stringBuilder.Append(Program.FILE_CURRENT); }
+                if (jsonOutputFile != null) { stringBuilder.Append(jsonOutputFile); }
+                else if (ongoing) { stringBuilder.Append(Program.FILE_CURRENT); }
                 else { stringBuilder.Append(Program.GetYYYYMMDD(dateTime)); stringBuilder.Append(".json"); }
-                stringBuilder.AppendLine("\">(Download data in JSON format)</a>");
+                stringBuilder.AppendLine("\">(Download data in JSON format)</a><br />");
             }
+            stringBuilder.AppendLine("Source code can be found <a href=\"https://github.com/VDZx/Spelunky2LeaderboardGenerator\">on GitHub</a>.");
             if (ongoing)
             {
                 stringBuilder.AppendLine(countdownJS.Replace("{TODAY}", Program.GetYYYYMMDD(dateTime)).Replace("{TOMORROW}", Program.GetYYYYMMDD(dateTime.AddDays(1))).Replace("{TYPE}", Convert.ToString(pageType).ToLower()));
@@ -718,6 +721,7 @@ namespace Spelunky2LeaderboardGenerator
             {
                 case Platform.Steam: stringBuilder.Append("pc"); break;
                 case Platform.PS4: stringBuilder.Append("ps4"); break;
+                case Platform.Switch: stringBuilder.Append("switch"); break;
                 default: stringBuilder.Append("unknown"); knownPlatform = false; break;
             }
             if (knownPlatform) stringBuilder.Append("\" />");
@@ -777,7 +781,8 @@ namespace Spelunky2LeaderboardGenerator
                             stringBuilder.Append(" class=\"clear\">");
                             break;
                         default:
-                            stringBuilder.Append(">");
+                            if (entry.level >= COSMIC_OCEAN) stringBuilder.Append(" class=\"co\">");
+                            else stringBuilder.Append(">");
                             break;
                     }
                     stringBuilder.Append(entry.GetLevel());
