@@ -63,9 +63,10 @@ namespace Spelunky2LeaderboardGenerator
     public enum Platform
     {
         Unknown = 0x00,
-        //Discord = 0x10, non-standard way of submitting
+        Discord = 0x10, //non-standard way of submitting, happens on PC when not authenticated via Steam
         //Unknown = 0x11, witnessed as early as September 2020; possibly dev platform
         Steam = 0x12,
+		Xbone = 0x13,
         Switch = 0x20,
         PS4 = 0x30
     }

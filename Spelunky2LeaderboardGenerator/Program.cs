@@ -195,25 +195,25 @@ namespace Spelunky2LeaderboardGenerator
             {
                 PlayerEntry e = data.allEntries[i];
                 string reasonToAdd = null;
-                if (e.score > 11000000)
+                if (e.score > 19000000)
                 {
-                    reasonToAdd = "Score over $11 million (" + e.GetScore() + ").";
+                    reasonToAdd = "Score over $19 million (" + e.GetScore() + ").";
                 }
-                else if (e.runend == RunEndCause.NormalClear && e.runframes < 2 * 60 * 60)
+                else if (e.runend == RunEndCause.NormalClear && e.runframes < 90 * 60)
                 {
-                    reasonToAdd = "Normal clear in under two minutes (" + e.GetTime() + ").";
+                    reasonToAdd = "Normal clear in under one and a half minutes (" + e.GetTime() + ").";
                 }
-                else if (e.runend == RunEndCause.NormalClear && e.runframes < 4 * 60 * 60)
+                else if (e.runend == RunEndCause.HardClear && e.runframes < 3 * 60 * 60)
                 {
-                    reasonToAdd = "Hard clear in under four minutes (" + e.GetTime() + ").";
+                    reasonToAdd = "Hard clear in under three minutes (" + e.GetTime() + ").";
                 }
                 else if (e.runend == RunEndCause.SpecialClear && e.runframes < 20 * 60 * 60)
                 {
                     reasonToAdd = "Special clear in under 20 minutes (" + e.GetTime() + ").";
                 }
-                else if (e.level > 4 && e.runframes < e.level * 4 * 60)
+                else if (e.level > 4 && e.runframes < e.level * 3 * 60)
                 {
-                    reasonToAdd = "Less than 4 seconds per level average (" + e.GetLevel() + " in " + e.GetTime() + ").";
+                    reasonToAdd = "Less than 3 seconds per level average (" + e.GetLevel() + " in " + e.GetTime() + ").";
                 }
 
                 if (reasonToAdd != null)
@@ -274,7 +274,16 @@ namespace Spelunky2LeaderboardGenerator
             data.FilterBlacklisted();
             //Prepare extended entries
             Dictionary<ulong, ExtendedPlayerEntry> extendedEntries = new Dictionary<ulong, ExtendedPlayerEntry>();
-            for (int i = 0; i < data.allEntries.Length; i++) extendedEntries.Add(data.allEntries[i].id, new ExtendedPlayerEntry(data.allEntries[i], year, month, day));
+			for (int i = 0; i < data.allEntries.Length; i++)
+			{
+				PlayerEntry entry = data.allEntries[i];
+				if (extendedEntries.ContainsKey(entry.id))
+				{
+					Log("WARNING: Removing duplicate entry for player " + entry.name + " (" + entry.id + "; " + entry.platform +")!");
+					extendedEntries.Remove(entry.id); //Remove the former as the rest of the code effectively works with the latter
+				}
+				extendedEntries.Add(entry.id, new ExtendedPlayerEntry(entry, year, month, day));
+			}
             //Prepare page writer
             PageWriter pw = new PageWriter(data.allEntries, year, month, day, ongoing);
             //Depth sort
@@ -425,7 +434,7 @@ namespace Spelunky2LeaderboardGenerator
         {
             if (jss != null) return;
             jss = new JavaScriptSerializer();
-            jss.MaxJsonLength = 500 * 1024 * 1024;
+            jss.MaxJsonLength = 2000 * 1024 * 1024;
         }
 
         public static string Serialize(object obj, string description)

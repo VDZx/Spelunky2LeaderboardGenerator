@@ -155,13 +155,13 @@ namespace Spelunky2LeaderboardGenerator
 
             //Death stats
             stringBuilder.AppendLine("<font size=\"6\">Level deadliness</font><br />");
-            if (!ongoing)
+			/*if (!ongoing) //JeremyHay's site is no longer updating
             {
                 stringBuilder.Append("(You can also check out <a href=\"https://jhay.net/spelunky2daily/?day=");
                 stringBuilder.Append(Program.GetYYYYMMDD(dateTime));
                 stringBuilder.AppendLine("\">JeremyHay's site</a> for more survival stats.)<br />");
-            }
-            stringBuilder.AppendLine("<br />");
+            }*/
+			stringBuilder.AppendLine("<br />");
             stringBuilder.AppendLine("<table border=\"1\">");
             stringBuilder.AppendLine("<tr class=\"top\"><td></td><td>Level</td><td>Survivors</td><td>Deaths</td><td>Death rate</td></tr>");
             for (int i = 1; i < MAX_LEVEL; i++)
@@ -247,7 +247,7 @@ namespace Spelunky2LeaderboardGenerator
                 stringBuilder.Append("</td><td class=\"c");
                 stringBuilder.Append(Convert.ToString((int)characterDepths[i].Key, 16).PadLeft(2, '0'));
                 stringBuilder.Append("\" /><td>");
-                stringBuilder.Append(characterPlayerNames[characterDepths[i].Key]);
+                stringBuilder.Append(SanitizeHTMLString(characterPlayerNames[characterDepths[i].Key]));
                 stringBuilder.Append("</td><td>");
                 stringBuilder.Append(PlayerEntry.GetLevel(characterDepths[i].Value));
                 stringBuilder.AppendLine("</td></tr>");
@@ -283,7 +283,7 @@ namespace Spelunky2LeaderboardGenerator
                 stringBuilder.Append("</td><td class=\"c");
                 stringBuilder.Append(Convert.ToString((int)characterScores[i].Key, 16).PadLeft(2, '0'));
                 stringBuilder.Append("\" /><td>");
-                stringBuilder.Append(characterPlayerNames[characterScores[i].Key]);
+                stringBuilder.Append(SanitizeHTMLString(characterPlayerNames[characterScores[i].Key]));
                 stringBuilder.Append("</td><td>");
                 stringBuilder.Append(PlayerEntry.GetScore(characterScores[i].Value));
                 stringBuilder.AppendLine("</td></tr>");
@@ -331,7 +331,7 @@ namespace Spelunky2LeaderboardGenerator
                 stringBuilder.Append("</td><td class=\"c");
                 stringBuilder.Append(Convert.ToString((int)characterTimes[i].Key, 16).PadLeft(2, '0'));
                 stringBuilder.Append("\" /><td>");
-                if (finished) stringBuilder.Append(characterPlayerNames[characterTimes[i].Key]);
+                if (finished) stringBuilder.Append(SanitizeHTMLString(characterPlayerNames[characterTimes[i].Key]));
                 else stringBuilder.Append("<i>N/A</i>");
                 stringBuilder.Append("</td><td>");
                 if (finished) stringBuilder.Append(PlayerEntry.GetTime(characterTimes[i].Value));
@@ -410,14 +410,14 @@ namespace Spelunky2LeaderboardGenerator
             if (playedChars.Count == 20) accomplishments.Add(new Accomplishment("I Main Random", "This player has played with every character!", "allchars.png"));
 
             //Write header
-            WriteHeader(PageType.Player, pi.name);
+            WriteHeader(PageType.Player, SanitizeHTMLString(pi.name));
 
             //Return link
             stringBuilder.AppendLine("<center><a href=\"depth.html\">[Click here to return to leaderboard listings]</a><br /><br />");
 
             //Name(s)
             stringBuilder.Append("<font size=\"7\">");
-            stringBuilder.Append(pi.name);
+            stringBuilder.Append(SanitizeHTMLString(pi.name));
             stringBuilder.Append("</font>");
             BR();
             //Filter duplicate alternate names
@@ -443,7 +443,7 @@ namespace Spelunky2LeaderboardGenerator
             for (int i = 0; i < pi.previousNames.Count; i++)
             {
                 stringBuilder.Append("aka ");
-                stringBuilder.Append(pi.previousNames[i]);
+                stringBuilder.Append(SanitizeHTMLString(pi.previousNames[i]));
                 BR();
             }
 
@@ -720,9 +720,11 @@ namespace Spelunky2LeaderboardGenerator
             switch (entry.platform)
             {
                 case Platform.Steam: stringBuilder.Append("pc"); break;
+				case Platform.Discord: stringBuilder.Append("discord"); break;
                 case Platform.PS4: stringBuilder.Append("ps4"); break;
                 case Platform.Switch: stringBuilder.Append("switch"); break;
-                default: stringBuilder.Append("unknown"); knownPlatform = false; break;
+				case Platform.Xbone: stringBuilder.Append("xbone"); break;
+				default: stringBuilder.Append("unknown"); knownPlatform = false; break;
             }
             if (knownPlatform) stringBuilder.Append("\" />");
             else
@@ -765,7 +767,7 @@ namespace Spelunky2LeaderboardGenerator
                 stringBuilder.Append(playerFile);
                 stringBuilder.Append("\">");
             }
-            stringBuilder.Append(entry.name.Replace("<", "").Replace(">", ""));
+            stringBuilder.Append(SanitizeHTMLString(entry.name));
             if (playerFile != null) stringBuilder.Append("</a>");
             switch (sortedBy)
             {
@@ -878,6 +880,11 @@ namespace Spelunky2LeaderboardGenerator
             stringBuilder.AppendLine("</td></tr>");
         }
 
+		public static string SanitizeHTMLString(string input)
+		{
+			return input.Replace("<", "").Replace(">", "");
+		}
+
         const string countdownJS = @"
 <script>
 var tomorrow = new Date(""{TOMORROW}"").getTime();
@@ -885,9 +892,9 @@ setInterval(function()
 {
 	var left = tomorrow - new Date().getTime();
 	if (left > 0) document.getElementById(""count"").innerHTML = ""Challenge ends in "" + getLeft(left);
-	else if (left > -1800000)
+	else if (left > -3600000)
 	{
-		left += 1800000;
+		left += 3600000;
 		document.getElementById(""count"").innerHTML = ""Challenge finished! Final results in "" + getLeft(left);
 	}
 	else document.getElementById(""count"").innerHTML = ""Challenge finished. <a href=\""{TODAY}_{TYPE}.html\"">Click here to view the final results.</a>"";
